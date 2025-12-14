@@ -37,4 +37,5 @@ infer-out/
 /_
 *.deb
 .theos
-
+compile_commands.json
+.cache

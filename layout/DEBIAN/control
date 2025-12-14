@@ -1,6 +1,6 @@
 Package: moe.misty.sslkillswitch3
 Name: SSL Kill Switch 3
-Depends: mobilesubstrate, preferenceloader
+Depends: mobilesubstrate, preferenceloader, com.opa334.altlist
 Conflicts: com.nablac0d3.sslkillswitch2
 Version: 1.1
 Architecture: iphoneos-arm

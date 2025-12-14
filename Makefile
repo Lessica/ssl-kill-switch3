@@ -1,25 +1,28 @@
+export PACKAGE_VERSION := 1.3
+
 ARCHS := arm64 arm64e
+TARGET := iphone:clang:16.5:14.0
+GO_EASY_ON_ME := 1
 
-TWEAK_NAME = SSLKillSwitch2
-SSLKillSwitch2_FILES = SSLKillSwitch/SSLKillSwitch.m
-SSLKillSwitch2_CFLAGS = -fobjc-arc
+include $(THEOS)/makefiles/common.mk
+
+TWEAK_NAME := SSLKillSwitch2
+
+SSLKillSwitch2_FILES += SSLKillSwitch/SSLKillSwitch.m
+SSLKillSwitch2_CFLAGS += -fobjc-arc
 SSLKillSwitch2_CFLAGS += -ISSLKillSwitch/fishhook
-
-SSLKillSwitch2_FRAMEWORKS = Security
+SSLKillSwitch2_FRAMEWORKS += Security
 
 ifndef FISHHOOK
 
 ifdef ROOTLESS
-$(info Build as a ROOTLESS Substrate Tweak)
-THEOS_PACKAGE_SCHEME=rootless
+THEOS_PACKAGE_SCHEME := rootless
 PACKAGE_BUILDNAME := rootless
 else ifdef ROOTHIDE
-$(info Build as a ROOTHIDE Substrate Tweak)
 # THEOS_PACKAGE_ARCH := iphoneos-arm64e # must set afterwards if using original theos
-THEOS_PACKAGE_SCHEME=roothide
+THEOS_PACKAGE_SCHEME := roothide
 PACKAGE_BUILDNAME := roothide
 else # ROOTLESS / ROOTHIDE
-$(info Build as a ROOTFUL Substrate Tweak)
 PACKAGE_BUILDNAME := rootful
 endif # ROOTLESS / ROOTHIDE
 
@@ -31,19 +34,18 @@ SSLKillSwitch2_CFLAGS += -DSUBSTRATE_BUILD
 
 else  # FISHHOOK
 
-$(info Build as a FishHook Tweak)
 SSLKillSwitch2_FILES += SSLKillSwitch/fishhook/fishhook.c
 # avoid linking Substrate
-SSLKillSwitch2_LOGOS_DEFAULT_GENERATOR = internal
+SSLKillSwitch2_LOGOS_DEFAULT_GENERATOR := internal
 
 endif # FISHHOOK
 
-include $(THEOS)/makefiles/common.mk
-
 include $(THEOS_MAKE_PATH)/tweak.mk
+
+SUBPROJECTS += SSLKillSwitchPrefs
 include $(THEOS_MAKE_PATH)/aggregate.mk
 
-
-after-install::
-	# Respring the device
-	install.exec "killall -9 SpringBoard"
+export THEOS_PACKAGE_SCHEME
+export THEOS_STAGING_DIR
+before-package::
+	@devkit/before-package.sh

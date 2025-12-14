@@ -28,7 +28,6 @@
 #import "substrate.h"
 
 #define PREFERENCE_FILE ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.nablac0d3.SSLKillSwitchSettings.plist")
-#define PREFERENCE_KEY @"shouldDisableCertificateValidation"
 
 #else // SUBSTRATE_BUILD
 
@@ -97,9 +96,13 @@ static void __hookbody_leaved(char (*p)[]) {
 static BOOL shouldHookFromPreference()
 {
 #if SUBSTRATE_BUILD
-    NSString *preferenceSetting = PREFERENCE_KEY;
     BOOL shouldHook = NO;
-    NSMutableDictionary* plist = [[NSMutableDictionary alloc] initWithContentsOfFile:PREFERENCE_FILE];
+
+    NSUserDefaults *ud = [[NSUserDefaults alloc] initWithSuiteName:@"com.nablac0d3.SSLKillSwitchSettings"];
+    NSDictionary* plist = [ud dictionaryRepresentation];
+    if (!plist) {
+        plist = [[NSDictionary alloc] initWithContentsOfFile:PREFERENCE_FILE];
+    }
 
     if (!plist)
     {
@@ -117,18 +120,18 @@ static BOOL shouldHookFromPreference()
         shouldHook = [[plist objectForKey:@"shouldDisableCertificateValidation"] boolValue];
         SSKInfoLog("Preference set to %d.", shouldHook);
 
-        // Checking if BundleId has been excluded by user
+        // Checking if BundleId has been enabled by user
         NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
         bundleId = [bundleId stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
 
-        NSString *excludedBundleIdsString = [plist objectForKey:@"excludedBundleIds"];
-        excludedBundleIdsString = [excludedBundleIdsString stringByReplacingOccurrencesOfString:@" " withString:@""];
+        NSArray *enabledBundleIds = [plist objectForKey:@"enabledBundleIds"];
+        if (![enabledBundleIds isKindOfClass:[NSArray class]]) {
+            enabledBundleIds = @[];
+        }
 
-        NSArray *excludedBundleIds = [excludedBundleIdsString componentsSeparatedByString:@","];
-
-        if ([excludedBundleIds containsObject:bundleId])
+        if (shouldHook && ![enabledBundleIds containsObject:bundleId])
         {
-            SSKInfoLog("Not hooking excluded bundle: %{public}@", bundleId);
+            SSKInfoLog("Not hooking bundle not in whitelist: %{public}@", bundleId);
             shouldHook = NO;
         }
     }
@@ -328,7 +331,7 @@ HOOKBODY({
             1           // bool result
         );  // call the callback with success result
     });
-	return 0; // errSecSuccess
+    return 0; // errSecSuccess
 })
 
 static OSStatus (*original_SecTrustEvaluateAsyncWithError)(SecTrustRef trust, dispatch_queue_t queue, SecTrustWithErrorCallback result);
@@ -342,7 +345,7 @@ HOOKBODY({
             NULL        // CFErrorRef error (nullable)
         );  // call the callback with success result
     });
-	return 0; // errSecSuccess
+    return 0; // errSecSuccess
 })
 
 static OSStatus (*original_SecTrustEvaluateFastAsync)(SecTrustRef trust, dispatch_queue_t queue, SecTrustCallback result);
@@ -355,7 +358,7 @@ HOOKBODY({
             1           // bool result
         );  // call the callback with success result
     });
-	return 0; // errSecSuccess
+    return 0; // errSecSuccess
 })
 
 static OSStatus (*original_SecTrustSetPolicies)(SecTrustRef trust, void* policies);
@@ -391,34 +394,34 @@ HOOKBODY({
 //   unknown - cannot analysis due to missing xref
 
 void checkChallengeAndOverride(id challenge, void (^completion)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential)) {
-	BOOL needOverrideCompletion = NO;
+    BOOL needOverrideCompletion = NO;
 
-	NSURLProtectionSpace *protectionSpace = [challenge protectionSpace];
-	if ([@"https" isEqualToString:[protectionSpace protocol]]) {
-		needOverrideCompletion = YES;
-	}
-	if (needOverrideCompletion) {
-		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),  ^{
-			completion(NSURLSessionAuthChallengeUseCredential, [[NSURLCredential alloc] initWithTrust:[protectionSpace serverTrust]]);
-		});
-	}
+    NSURLProtectionSpace *protectionSpace = [challenge protectionSpace];
+    if ([@"https" isEqualToString:[protectionSpace protocol]]) {
+        needOverrideCompletion = YES;
+    }
+    if (needOverrideCompletion) {
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),  ^{
+            completion(NSURLSessionAuthChallengeUseCredential, [[NSURLCredential alloc] initWithTrust:[protectionSpace serverTrust]]);
+        });
+    }
 }
 
 static void (*old__NSCFLocalSessionTask__onqueue_didReceiveChallenge)(id self, SEL _cmd, id challenge, id request, void (^completion)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential) );
 static void new__NSCFLocalSessionTask__onqueue_didReceiveChallenge(id self, SEL _cmd, id challenge, id request, void (^completion)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential) ) 
 HOOKBODY({
-	SSKVerboseLog("__NSCFLocalSessionTask _onqueue_didReceiveChallenge! protectionSpace: %{public}@", [challenge protectionSpace]);
-	checkChallengeAndOverride(challenge, completion);
-	// return %orig(challenge, req, completion);
+    SSKVerboseLog("__NSCFLocalSessionTask _onqueue_didReceiveChallenge! protectionSpace: %{public}@", [challenge protectionSpace]);
+    checkChallengeAndOverride(challenge, completion);
+    // return %orig(challenge, req, completion);
 })
 
 static BOOL (*old__NSCFTCPIOStreamTask__onqueue_sendSessionChallenge)(id self, SEL _cmd, id challenge, void (^completion)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential) );
 static BOOL new__NSCFTCPIOStreamTask__onqueue_sendSessionChallenge(id self, SEL _cmd, id challenge, void (^completion)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential) ) 
 HOOKBODY({
-	SSKVerboseLog("__NSCFTCPIOStreamTask _onqueue_sendSessionChallenge! protectionSpace: %{public}@", [challenge protectionSpace]);
-	checkChallengeAndOverride(challenge, completion);
-	return YES;
-	// return %orig;
+    SSKVerboseLog("__NSCFTCPIOStreamTask _onqueue_sendSessionChallenge! protectionSpace: %{public}@", [challenge protectionSpace]);
+    checkChallengeAndOverride(challenge, completion);
+    return YES;
+    // return %orig;
 })
 
 #pragma mark AFNetworking
@@ -522,7 +525,7 @@ void hookF(const char *libName, const char *funcName, void *replaceFun, void **o
         memcpy(originalMem, pIns, sizeof(originalMem));
         uintptr_t targetAddr = parse_branch_instruction(pIns[0], (uint64_t)pIns);
         if (targetAddr) {
-            SSKInfoLog("%{public}s jumps to %p: %llx, hook new addr instead!", funcName, targetAddr, *(void **)targetAddr);
+            SSKInfoLog("%{public}s jumps to %p: %p, hook new addr instead!", funcName, (void *)targetAddr, *(void **)targetAddr);
             pFunc = (void *)targetAddr;
         }
         // SSKVerboseLog("MSHookFunction(%p, %p, %p)");
@@ -606,12 +609,12 @@ __attribute__((constructor)) static void init(int argc, const char **argv)
             // Hook SSL_get_psk_identity() on both iOS 12 and 13
             hookF("/usr/lib/libboringssl.dylib", "SSL_get_psk_identity", (void *) replaced_SSL_get_psk_identity,  (void **) NULL);
         }
-		else if ([processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){11, 0, 0}])
-		{
+        else if ([processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){11, 0, 0}])
+        {
             // Support for iOS 11
             SSKInfoLog("iOS 11 detected; hooking nw_tls_create_peer_trust()...");
-			hookF("/usr/lib/libnetwork.dylib", "nw_tls_create_peer_trust", (void *) replaced_tls_helper_create_peer_trust,  (void **) &original_tls_helper_create_peer_trust);
-		}
+            hookF("/usr/lib/libnetwork.dylib", "nw_tls_create_peer_trust", (void *) replaced_tls_helper_create_peer_trust,  (void **) &original_tls_helper_create_peer_trust);
+        }
         else if ([processInfo isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){10, 0, 0}])
         {
             // Support for iOS 10

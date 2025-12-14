@@ -2,22 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>entry</key>
-	<dict>
-		<key>cell</key>
-		<string>PSLinkCell</string>
-		<key>icon</key>
-		<string>SSLKillSwitch.png</string>
-		<key>label</key>
-		<string>SSL Kill Switch 3</string>
-	</dict>
 	<key>items</key>
 	<array>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
-			<key>label</key>
-			<string></string>
 			<key>footerText</key>
 			<string>SSL Kill Switch 3</string>
 		</dict>
@@ -31,24 +20,37 @@
 			<key>key</key>
 			<string>shouldDisableCertificateValidation</string>
 			<key>label</key>
-			<string>Disable Certificate Validation</string>
+			<string>Enabled</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSEditTextCell</string>
-			<key>label</key>
-			<string>Excluded BundleIDs:</string>
-			<key>key</key>
-			<string>excludedBundleIds</string>
-			<key>default</key>
-			<string></string>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>ATLApplicationListMultiSelectionController</string>
 			<key>defaults</key>
 			<string>com.nablac0d3.SSLKillSwitchSettings</string>
-			<key>keyboard</key>
-			<string></string>
-			<key>noAutoCorrect</key>
+			<key>key</key>
+			<string>enabledBundleIds</string>
+			<key>label</key>
+			<string>Enabled Applications</string>
+			<key>sections</key>
+			<array>
+				<dict>
+					<key>sectionType</key>
+					<string>User</string>
+				</dict>
+				<dict>
+					<key>sectionType</key>
+					<string>System</string>
+				</dict>
+			</array>
+			<key>showIdentifiersAsSubtitle</key>
 			<true/>
-        </dict>
+			<key>useSearchBar</key>
+			<true/>
+			<key>default</key>
+			<array/>
+		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSLinkListCell</string>
@@ -76,7 +78,7 @@
 			</array>
 			<key>defaults</key>
 			<string>com.nablac0d3.SSLKillSwitchSettings</string>
-        </dict>
+		</dict>
 	</array>
 	<key>title</key>
 	<string>SSL Kill Switch 3</string>
