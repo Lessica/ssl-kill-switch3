@@ -17,17 +17,10 @@
 #import <dlfcn.h>
 #import <objc/runtime.h>
 
-#ifndef THEOS_PACKAGE_SCHEME_ROOTHIDE
-#import <rootless.h>
-#else
-#import <roothide.h>
-#define ROOT_PATH_NS jbroot
-#endif
-
 #if SUBSTRATE_BUILD
 #import "substrate.h"
 
-#define PREFERENCE_FILE ROOT_PATH_NS(@"/var/mobile/Library/Preferences/com.nablac0d3.SSLKillSwitchSettings.plist")
+#define PREFERENCE_FILE @"/var/mobile/Library/Preferences/com.nablac0d3.SSLKillSwitchSettings.plist"
 
 #else // SUBSTRATE_BUILD
 
@@ -98,11 +91,8 @@ static BOOL shouldHookFromPreference()
 #if SUBSTRATE_BUILD
     BOOL shouldHook = NO;
 
-    NSUserDefaults *ud = [[NSUserDefaults alloc] initWithSuiteName:@"com.nablac0d3.SSLKillSwitchSettings"];
-    NSDictionary* plist = [ud dictionaryRepresentation];
-    if (!plist) {
-        plist = [[NSDictionary alloc] initWithContentsOfFile:PREFERENCE_FILE];
-    }
+    NSUserDefaults *ud = [[NSUserDefaults alloc] initWithSuiteName:PREFERENCE_FILE];
+    NSDictionary *plist = [ud dictionaryRepresentation];
 
     if (!plist)
     {
